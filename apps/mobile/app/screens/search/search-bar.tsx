@@ -68,6 +68,7 @@ export const SearchBar = ({
       >
         <IconButton
           name="arrow-left"
+          testID="search-back-button"
           size={AppFontSize.xxl}
           top={10}
           bottom={10}
