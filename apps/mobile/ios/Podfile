@@ -79,6 +79,20 @@ post_install do |installer|
       end
     end
   end
+  # Xcode 26.5's Clang rejects fmt 11's consteval compile-time format checks
+  # when building fmt's own sources as C++20 ("call to consteval function ...
+  # is not a constant expression"). fmt detects the language level at compile
+  # time (FMT_CPLUSPLUS < 201709L disables consteval), and its base.h defines
+  # FMT_USE_CONSTEVAL unconditionally so a -D override is not possible.
+  # Building just the fmt pod as C++17 sidesteps the bug; the compiled library
+  # only contains runtime functions, so mixing with C++20 consumers is safe.
+  installer.pods_project.targets.each do |target|
+    if target.name == "fmt" then
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
+  end
   installer.pods_project.targets.each do |target|
         if target.respond_to?(:product_type) and target.product_type == "com.apple.product-type.bundle"
           target.build_configurations.each do |config|
