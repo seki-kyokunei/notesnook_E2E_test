@@ -75,13 +75,15 @@ function IconButton({
   children,
   fwdRef,
   style = {},
-  preventDefault = false
+  preventDefault = false,
+  id
 }: {
   onPress?: () => void;
   children: React.ReactNode;
   fwdRef?: any;
   style?: React.CSSProperties;
   preventDefault?: boolean;
+  id?: string;
 }) {
   return (
     <Button
@@ -89,6 +91,7 @@ function IconButton({
       fwdRef={fwdRef}
       preventDefault={preventDefault}
       style={{ ...iconButtonStyle, ...style }}
+      id={id}
     >
       {children}
     </Button>
@@ -101,7 +104,8 @@ const Button = ({
   style,
   preventDefault = true,
   fwdRef,
-  onClick
+  onClick,
+  id
 }: {
   onPress?: () => void;
   onClick?: (event: any) => void;
@@ -109,10 +113,12 @@ const Button = ({
   style: React.CSSProperties;
   preventDefault?: boolean;
   fwdRef?: any;
+  id?: string;
 }) => {
   return (
     <button
       ref={fwdRef}
+      id={id}
       className={styles.btn_header}
       style={style}
       onMouseDown={(e) => {
@@ -183,6 +189,7 @@ function Header({
             <div />
           ) : (
             <IconButton
+              id="editor-back-button"
               onPress={() => {
                 post(EditorEvents.back, undefined, tab.id, tab.session?.noteId);
               }}

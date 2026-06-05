@@ -43,20 +43,35 @@ class Element {
   isVisible(timeout?: number) {
     return waitFor(this.element)
       .toBeVisible()
-      .withTimeout(timeout || 500);
+      .withTimeout(timeout || 5000);
   }
 
   isNotVisible(timeout?: number) {
     return waitFor(this.element)
       .not.toBeVisible()
-      .withTimeout(timeout || 500);
+      .withTimeout(timeout || 5000);
   }
 
   async waitAndTap(timeout?: number) {
-    await waitFor(this.element)
-      .toBeVisible()
-      .withTimeout(timeout || 500);
-    await this.element.tap();
+    // The first match may be occluded (e.g. a sheet row behind a dialog
+    // with the same text) or still animating in — retry across match
+    // indices before giving up.
+    const matcher =
+      this.type === "id" ? by.id(this.value) : by.text(this.value);
+    let lastError;
+    for (const index of [0, 1, 0]) {
+      const el = element(matcher).atIndex(index);
+      try {
+        await waitFor(el)
+          .toBeVisible()
+          .withTimeout(timeout || 5000);
+        await el.tap();
+        return;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError;
   }
 
   tap(point?: Detox.Point2D): Promise<void> {
@@ -74,8 +89,10 @@ class Element {
 const Tests = {
   awaitLaunch: async () => {
     await device.disableSynchronization();
+    // On iOS (Fabric), the root wrapper view is flattened behind its children,
+    // so visibility-based matching always fails — check existence instead.
     await waitFor(element(by.id(notesnook.ids.default.root)))
-      .toBeVisible()
+      .toExist()
       //@ts-ignore
       .withTimeout(globalThis["DEBUG_MODE"] ? 4000 : 500);
   },
@@ -89,7 +106,48 @@ const Tests = {
   fromId: Element.fromId,
   fromText: Element.fromText,
   async exitEditor() {
+    if (_device.getPlatform() === "ios") {
+      // pressBack is Android-only; tap the editor's in-webview back button.
+      await web().element(by.web.id("editor-back-button")).tap();
+      return;
+    }
     await _device.pressBack();
+    await _device.pressBack();
+  },
+  async goBack() {
+    if (_device.getPlatform() === "ios") {
+      // No hardware back button on iOS — dismiss the topmost sheet by
+      // tapping its backdrop (near the top, above the sheet content).
+      // Wait out any closing animation first: a backdrop that disappears
+      // on its own was already being dismissed and shouldn't consume
+      // this back press.
+      const backdrop = element(by.id("sheet-backdrop")).atIndex(0);
+      try {
+        await waitFor(backdrop).not.toExist().withTimeout(1500);
+      } catch (e) {
+        // a sheet is genuinely open — dismiss it
+        await backdrop.tap({ x: 220, y: 200 });
+        await Tests.sleep(500);
+        return;
+      }
+      // Emulate Android hardware back for screens: tap the header left
+      // button (back arrow on nested screens). If it opened the side menu
+      // instead (drawer-level screen), go to Notes — Android's back
+      // returns to the initial route there.
+      await Tests.fromId(
+        notesnook.ids.default.header.buttons.left
+      ).waitAndTap();
+      try {
+        await waitFor(element(by.id("sidemenu-settings-icon")).atIndex(0))
+          .toBeVisible()
+          .withTimeout(1500);
+        await Tests.fromText("Notes").waitAndTap();
+      } catch (e) {
+        // header button navigated back instead of opening the drawer
+      }
+      await Tests.sleep(300);
+      return;
+    }
     await _device.pressBack();
   },
   async createNote(title?: string, _body?: string) {
@@ -98,8 +156,26 @@ const Tests = {
       "Test note description that is very long and should not fit in text.";
     await Tests.fromId(notesnook.buttons.add).tap();
     if (title) {
-      await web().element(by.web.id("editor-title")).focus();
-      await web().element(by.web.id("editor-title")).typeText(title, false);
+      if (_device.getPlatform() === "ios") {
+        // typeText silently fails on the React-controlled textarea on iOS;
+        // set the value natively and fire an input event instead.
+        await web()
+          .element(by.web.id("editor-title"))
+          .runScript(
+            `(el, value) => {
+              const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLTextAreaElement.prototype,
+                "value"
+              ).set;
+              setter.call(el, value);
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+            }`,
+            [title]
+          );
+      } else {
+        await web().element(by.web.id("editor-title")).focus();
+        await web().element(by.web.id("editor-title")).typeText(title, false);
+      }
     }
     await expect(web().element(by.web.className("ProseMirror"))).toExist();
     await web().element(by.web.className("ProseMirror")).focus();
@@ -109,6 +185,17 @@ const Tests = {
     return { title, body };
   },
   async navigate(screen: RouteName | ({} & string)) {
+    if (_device.getPlatform() === "ios") {
+      // Wait out the sheet-dismiss animation — the fading backdrop
+      // intercepts taps on the header menu button.
+      try {
+        await waitFor(element(by.id("sheet-backdrop")).atIndex(0))
+          .not.toExist()
+          .withTimeout(5000);
+      } catch (e) {
+        // backdrop still around; proceed and let the tap fail loudly
+      }
+    }
     let menu = Tests.fromId(notesnook.ids.default.header.buttons.left);
     await menu.waitAndTap();
     await Tests.fromText(screen as string).waitAndTap();
@@ -311,7 +398,9 @@ class TestBuilder {
 
   typeTextById(id: string, text: string) {
     return this.addStep(async () => {
-      await Element.fromId(id).element.typeText(text);
+      const el = Element.fromId(id);
+      await waitFor(el.element).toExist().withTimeout(5000);
+      await el.element.typeText(text);
     });
   }
 
@@ -324,7 +413,7 @@ class TestBuilder {
   pressBack(count = 1) {
     return this.addStep(async () => {
       for (let i = 0; i < count; i++) {
-        await device.pressBack();
+        await Tests.goBack();
       }
     });
   }

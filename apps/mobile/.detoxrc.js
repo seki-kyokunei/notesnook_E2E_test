@@ -15,14 +15,14 @@ module.exports = {
       binaryPath:
         "ios/build/Build/Products/Debug-iphonesimulator/Notesnook.app",
       build:
-        "xcodebuild -workspace ios/Notesnook.xcworkspace -scheme YOUR_APP -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build"
+        "ENVFILE=.env.test xcodebuild -workspace ios/Notesnook.xcworkspace -scheme Notesnook -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build ARCHS=arm64 EXCLUDED_ARCHS="
     },
     "ios.release": {
       type: "ios.app",
       binaryPath:
         "ios/build/Build/Products/Release-iphonesimulator/Notesnook.app",
       build:
-        "xcodebuild -workspace ios/Notesnook.xcworkspace -scheme YOUR_APP -configuration Release -sdk iphonesimulator -derivedDataPath ios/build"
+        "ENVFILE=.env.test xcodebuild -workspace ios/Notesnook.xcworkspace -scheme Notesnook -configuration Release -sdk iphonesimulator -derivedDataPath ios/build ARCHS=arm64 EXCLUDED_ARCHS="
     },
     "android.debug": {
       type: "android.apk",
