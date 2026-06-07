@@ -5,7 +5,7 @@ This repository is a fork of [Notesnook](https://github.com/streetwriters/notesn
 ## What I built
 
 - **16 end-to-end tests across 4 suites** — note CRUD, search, trash, and notebooks — all running fully offline against the local database on an iOS simulator (deterministic, no backend dependency).
-- A **three-layer test architecture**: `fixtures/` (typed test data) / `page-objects/` (every selector and reusable step, one class per screen) / `tests/` (scenarios and assertions only — zero selectors, zero inline data).
+- A **three-layer test architecture**: `fixtures/` (typed test data) / `page-objects/` (every selector and reusable step, one class per screen) / `tests/` (scenarios and assertions only — zero selectors, zero inline data) — physically isolated under [`apps/mobile/e2e/assignment/`](apps/mobile/e2e/assignment), clearly separated from the inherited Notesnook harness.
 - An **illustrative GitHub Actions workflow** (`.github/workflows/ios.e2e.yml`) showing how the suite would run in CI, annotated with the usual mobile-CI failure and flake points.
 - The **infrastructure fixes** needed to make the repo's existing Detox harness build and run on a current toolchain (Xcode 26 / Detox 20), committed separately with clear messages.
 

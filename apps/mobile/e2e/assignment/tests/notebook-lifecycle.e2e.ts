@@ -21,7 +21,7 @@ import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
 import { NotebookPage } from "../page-objects/notebook.page";
-import { Tests } from "./utils";
+import { Tests } from "../../tests/utils";
 
 /**
  * Notebook lifecycle — creating a notebook, linking a note to it from the

@@ -21,7 +21,7 @@ import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
 import { TrashPage } from "../page-objects/trash.page";
-import { Tests } from "./utils";
+import { Tests } from "../../tests/utils";
 
 /**
  * Trash lifecycle — trashed notes appearing in Trash, restore, permanent

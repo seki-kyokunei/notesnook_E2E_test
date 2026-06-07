@@ -100,7 +100,7 @@ jobs:
       - name: Run Detox e2e tests
         run: >
           npx detox test -c ios.sim.release
-          e2e/tests/note-lifecycle.e2e.ts
-          e2e/tests/search-lifecycle.e2e.ts
-          e2e/tests/trash-lifecycle.e2e.ts
-          e2e/tests/notebook-lifecycle.e2e.ts
+          e2e/assignment/tests/note-lifecycle.e2e.ts
+          e2e/assignment/tests/search-lifecycle.e2e.ts
+          e2e/assignment/tests/trash-lifecycle.e2e.ts
+          e2e/assignment/tests/notebook-lifecycle.e2e.ts

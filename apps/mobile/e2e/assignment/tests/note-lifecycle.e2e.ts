@@ -21,7 +21,7 @@ import { expect as jestExpect } from "@jest/globals";
 import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
-import { Tests } from "./utils";
+import { Tests } from "../../tests/utils";
 
 /**
  * Full local note CRUD lifecycle — create, read (persistence), update,

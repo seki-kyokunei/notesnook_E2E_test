@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { notesnook } from "../test.ids";
-import { Tests } from "../tests/utils";
+import { notesnook } from "../../test.ids";
+import { Tests } from "../../tests/utils";
 import { BasePage } from "./base-page";
 
 /**

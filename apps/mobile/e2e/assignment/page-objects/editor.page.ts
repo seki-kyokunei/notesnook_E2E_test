@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { by, web } from "detox";
-import { notesnook } from "../test.ids";
-import { Tests } from "../tests/utils";
+import { notesnook } from "../../test.ids";
+import { Tests } from "../../tests/utils";
 import { BasePage } from "./base-page";
 
 /**

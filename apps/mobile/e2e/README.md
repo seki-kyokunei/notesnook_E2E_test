@@ -18,23 +18,30 @@ Rejected alternatives: Expo-based apps (unsupported by Detox), backend-dependent
 
 ## 3. Architecture
 
+All assignment work is physically isolated under `e2e/assignment/`, separate
+from the inherited Notesnook harness (`tests/utils.ts`, `test.ids.js`, and the
+project's own legacy suites, which stay in their original locations):
+
 ```
 e2e/
-├── fixtures/
-│   └── test-data.ts          # WHAT the tests use — all test data, typed,
-│                             #   grouped by suite, keys named by scenario role
-├── page-objects/
-│   ├── base-page.ts          # HOW to interact — shared wrappers (waits, taps,
-│   ├── note-list.page.ts     #   typing, visibility assertions)
-│   ├── editor.page.ts        #   per-screen objects encapsulating every
-│   ├── search.page.ts        #   selector and reusable action for that screen
-│   ├── trash.page.ts
-│   └── notebook.page.ts
-└── tests/
-    ├── note-lifecycle.e2e.ts      # WHAT to verify — scenarios + assertions,
-    ├── search-lifecycle.e2e.ts    #   zero selectors, zero inline data
-    ├── trash-lifecycle.e2e.ts
-    └── notebook-lifecycle.e2e.ts
+├── assignment/                   # ← everything in here is mine
+│   ├── fixtures/
+│   │   └── test-data.ts          # WHAT the tests use — all test data, typed,
+│   │                             #   grouped by suite, keys named by scenario role
+│   ├── page-objects/
+│   │   ├── base-page.ts          # HOW to interact — shared wrappers (waits, taps,
+│   │   ├── note-list.page.ts     #   typing, visibility assertions)
+│   │   ├── editor.page.ts        #   per-screen objects encapsulating every
+│   │   ├── search.page.ts        #   selector and reusable action for that screen
+│   │   ├── trash.page.ts
+│   │   └── notebook.page.ts
+│   └── tests/
+│       ├── note-lifecycle.e2e.ts      # WHAT to verify — scenarios + assertions,
+│       ├── search-lifecycle.e2e.ts    #   zero selectors, zero inline data
+│       ├── trash-lifecycle.e2e.ts
+│       └── notebook-lifecycle.e2e.ts
+├── tests/                        # inherited: utils.ts + Notesnook's own suites
+└── test.ids.js                   # inherited: upstream testID registry
 ```
 
 Design rules applied consistently:
@@ -126,22 +133,22 @@ npx detox build-framework-cache
 # build the app, then run everything
 npx detox build -c ios.sim.release
 npx detox test -c ios.sim.release \
-  e2e/tests/note-lifecycle.e2e.ts \
-  e2e/tests/search-lifecycle.e2e.ts \
-  e2e/tests/trash-lifecycle.e2e.ts \
-  e2e/tests/notebook-lifecycle.e2e.ts
+  e2e/assignment/tests/note-lifecycle.e2e.ts \
+  e2e/assignment/tests/search-lifecycle.e2e.ts \
+  e2e/assignment/tests/trash-lifecycle.e2e.ts \
+  e2e/assignment/tests/notebook-lifecycle.e2e.ts
 ```
 
 Run a single suite:
 
 ```bash
-npx detox test -c ios.sim.release e2e/tests/note-lifecycle.e2e.ts
+npx detox test -c ios.sim.release e2e/assignment/tests/note-lifecycle.e2e.ts
 ```
 
 ## 9. What's mine vs upstream
 
 **Mine:**
-- All 16 test cases (`tests/*-lifecycle.e2e.ts`), all 6 page objects, the fixtures layer, and the illustrative CI workflow.
+- All 16 test cases (`assignment/tests/*-lifecycle.e2e.ts`), all 6 page objects, the fixtures layer, and the illustrative CI workflow.
 - Infra fixes committed separately with clear messages: making the existing Detox harness runnable on iOS (Xcode 26 / Detox 20), vendoring an arm64-simulator libsodium for reproducible builds, building the fmt pod as C++17 for Xcode 26.5, and one `search-back-button` testID added to app code for testability.
 
 **Upstream (reused, unmodified):** the application itself, the low-level `tests/utils.ts` helpers (`Tests`/`Element` plumbing my page objects wrap), `test.ids.js`, and the jest/Detox configuration.

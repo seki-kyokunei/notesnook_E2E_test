@@ -17,7 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { Element, Tests } from "../tests/utils";
+import { Element, Tests } from "../../tests/utils";
 
 /**
  * Base class for all page objects.
