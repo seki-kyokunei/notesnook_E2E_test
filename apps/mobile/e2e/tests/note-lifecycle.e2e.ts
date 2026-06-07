@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expect as jestExpect } from "@jest/globals";
+import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
 import { Tests } from "./utils";
@@ -29,7 +30,8 @@ import { Tests } from "./utils";
  *
  * Screen interactions live in page objects: NoteListPage drives the notes
  * list, EditorPage wraps the editor WebView (see page-objects/editor.page.ts
- * for the WebView structure and the react-freeze tab model).
+ * for the WebView structure and the react-freeze tab model). Test data
+ * lives in fixtures/test-data.ts.
  */
 
 const noteList = new NoteListPage();
@@ -45,27 +47,21 @@ describe("NOTE LIFECYCLE", () => {
     // Create: add button -> type title + body in the editor -> exit.
     // createNote() already asserts the body preview is visible in the
     // list; additionally assert the title is shown.
-    await editor.createNote(
-      "Lifecycle note",
-      "The body of the lifecycle note."
-    );
-    await noteList.expectNoteVisible("Lifecycle note");
+    const note = fixtures.notes.lifecycle;
+    await editor.createNote(note.title, note.body);
+    await noteList.expectNoteVisible(note.title);
   });
 
   it("persists note content when reopened", async () => {
     // Read-after-write: reopen the note from the list and verify the
     // editor restores exactly what was entered (local DB persistence).
-    await editor.createNote(
-      "Persisted note",
-      "This body must survive a reopen."
-    );
+    const note = fixtures.notes.persisted;
+    await editor.createNote(note.title, note.body);
     await noteList.openNoteAt(0);
     await editor.waitForLoad();
 
-    jestExpect(await editor.readTitle()).toBe("Persisted note");
-    jestExpect(await editor.readBody()).toContain(
-      "This body must survive a reopen."
-    );
+    jestExpect(await editor.readTitle()).toBe(note.title);
+    jestExpect(await editor.readBody()).toContain(note.body);
 
     await editor.exit();
   });
@@ -73,19 +69,20 @@ describe("NOTE LIFECYCLE", () => {
   it("edits a note and reflects the update", async () => {
     // Update: reopen the note, append text, exit, reopen again and verify
     // both the original and the appended content were saved.
-    await editor.createNote("Editable note", "Original content.");
+    const note = fixtures.notes.edit;
+    await editor.createNote(note.title, note.body);
 
     await noteList.openNoteAt(0);
     await editor.waitForLoad();
-    await editor.appendToBody(" Edited content.");
+    await editor.appendToBody(note.appendix);
     await editor.waitForAutosave();
     await editor.exit();
 
     await noteList.openNoteAt(0);
     await editor.waitForLoad();
     const body = await editor.readBody();
-    jestExpect(body).toContain("Original content.");
-    jestExpect(body).toContain("Edited content.");
+    jestExpect(body).toContain(note.body);
+    jestExpect(body).toContain(note.appendix.trim());
     await editor.exit();
   });
 
@@ -93,13 +90,11 @@ describe("NOTE LIFECYCLE", () => {
     // Delete: list item menu -> "Move to trash". The app moves the note to
     // trash immediately (no confirmation dialog) and the properties sheet
     // closes itself, so the only post-condition is the note leaving the list.
-    await editor.createNote(
-      "Disposable note",
-      "This note is about to be deleted."
-    );
+    const note = fixtures.notes.disposable;
+    await editor.createNote(note.title, note.body);
     await noteList.moveFirstNoteToTrash();
-    await noteList.expectNoteNotVisible("Disposable note");
-    await noteList.expectNoteNotVisible("This note is about to be deleted.");
+    await noteList.expectNoteNotVisible(note.title);
+    await noteList.expectNoteNotVisible(note.body);
   });
 
   it("handles a note with an empty title", async () => {
@@ -107,8 +102,9 @@ describe("NOTE LIFECYCLE", () => {
     // auto-generates a title of the form "Note DD-MM-YYYY HH:MM" (verified
     // behavior), so the note must still appear in the list as item 0 with
     // its body as the preview text.
-    await editor.createNote(undefined, "Body only, no title was entered.");
+    const note = fixtures.notes.untitled;
+    await editor.createNote(undefined, note.body);
     await noteList.expectNoteItemVisible(0);
-    await noteList.expectNoteVisible("Body only, no title was entered.");
+    await noteList.expectNoteVisible(note.body);
   });
 });

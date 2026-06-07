@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
 import { NotebookPage } from "../page-objects/notebook.page";
@@ -25,7 +26,8 @@ import { Tests } from "./utils";
 /**
  * Notebook lifecycle — creating a notebook, linking a note to it from the
  * notes list, and unlinking a note from inside the notebook. Everything
- * runs offline against the local database.
+ * runs offline against the local database. Test data lives in
+ * fixtures/test-data.ts.
  *
  * Flow deviations from the original spec, verified against the app source
  * (see page-objects/notebook.page.ts for details):
@@ -35,6 +37,8 @@ import { Tests } from "./utils";
  *   and the "select-minus" header action — the note menu's remove action
  *   is conditionally hidden, so the upstream-proven selection flow is used.
  */
+
+const { primary, linkedNote, insideNote } = fixtures.notebooks;
 
 const noteList = new NoteListPage();
 const editor = new EditorPage();
@@ -49,8 +53,8 @@ describe("NOTEBOOK LIFECYCLE", () => {
   it("creates a notebook", async () => {
     // Create via the notebooks tab's add button; the new notebook must
     // appear in the notebooks list.
-    await notebooks.create("Notebook A", true);
-    await notebooks.expectNotebookVisible("Notebook A");
+    await notebooks.create(primary.title, primary.withDescription);
+    await notebooks.expectNotebookVisible(primary.title);
   });
 
   it("adds a note to a notebook", async () => {
@@ -58,17 +62,17 @@ describe("NOTEBOOK LIFECYCLE", () => {
     // (note menu -> notebooks picker -> save), then verify from both
     // sides: the note item shows the notebook chip, and the notebook
     // contains the note.
-    await notebooks.create("Notebook A", true);
+    await notebooks.create(primary.title, primary.withDescription);
     await notebooks.returnToNotesHome();
-    await editor.createNote("Linked note", "Body of the linked note.");
+    await editor.createNote(linkedNote.title, linkedNote.body);
 
     await notebooks.linkFirstNoteToNotebook();
-    // The note's list item now renders a "Notebook A" chip.
-    await noteList.expectNoteVisible("Notebook A");
+    // The note's list item now renders the notebook title as a chip.
+    await noteList.expectNoteVisible(primary.title);
 
     await notebooks.openNotebooksList();
     await notebooks.openNotebookAt(0);
-    await notebooks.expectNoteInNotebook("Body of the linked note.");
+    await notebooks.expectNoteInNotebook(linkedNote.body);
   });
 
   it("removes a note from a notebook", async () => {
@@ -76,12 +80,12 @@ describe("NOTEBOOK LIFECYCLE", () => {
     // links it automatically), then unlink it via selection mode. The
     // note must leave the notebook's list (it is NOT deleted — unlinking
     // only removes the relation).
-    await notebooks.create("Notebook A", true);
+    await notebooks.create(primary.title, primary.withDescription);
     await notebooks.openNotebookAt(0);
-    await editor.createNote("Inside note", "Body of the inside note.");
-    await notebooks.expectNoteInNotebook("Body of the inside note.");
+    await editor.createNote(insideNote.title, insideNote.body);
+    await notebooks.expectNoteInNotebook(insideNote.body);
 
-    await notebooks.removeNoteFromNotebook("Body of the inside note.");
-    await notebooks.expectNoteNotInNotebook("Body of the inside note.");
+    await notebooks.removeNoteFromNotebook(insideNote.body);
+    await notebooks.expectNoteNotInNotebook(insideNote.body);
   });
 });

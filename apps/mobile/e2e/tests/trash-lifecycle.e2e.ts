@@ -17,6 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import { fixtures } from "../fixtures/test-data";
 import { EditorPage } from "../page-objects/editor.page";
 import { NoteListPage } from "../page-objects/note-list.page";
 import { TrashPage } from "../page-objects/trash.page";
@@ -25,7 +26,7 @@ import { Tests } from "./utils";
 /**
  * Trash lifecycle — trashed notes appearing in Trash, restore, permanent
  * delete (with confirm dialog), and clear-all. Everything runs offline
- * against the local database.
+ * against the local database. Test data lives in fixtures/test-data.ts.
  *
  * Verified behavior notes:
  * - Moving a note to trash from the list has NO confirm dialog (the app
@@ -55,58 +56,53 @@ describe("TRASH LIFECYCLE", () => {
   it("deleted note appears in trash", async () => {
     // A note moved to trash must leave the notes list (covered by the
     // fixture) and show up on the Trash screen.
-    await createTrashedNote("Trashed note", "This note is going to trash.");
+    const note = fixtures.trash.trashed;
+    await createTrashedNote(note.title, note.body);
     await trash.open();
-    await trash.expectItemVisible("Trashed note");
+    await trash.expectItemVisible(note.title);
   });
 
   it("restores a note from trash", async () => {
     // Restore: immediate, no confirm dialog. The note must disappear
     // from trash and reappear in the notes list.
-    await createTrashedNote(
-      "Restorable note",
-      "This note will be restored from trash."
-    );
+    const note = fixtures.trash.restorable;
+    await createTrashedNote(note.title, note.body);
     await trash.open();
-    await trash.expectItemVisible("Restorable note");
+    await trash.expectItemVisible(note.title);
 
     await trash.restoreFirstItem();
-    await trash.expectItemNotVisible("Restorable note");
+    await trash.expectItemNotVisible(note.title);
 
     await noteList.open();
-    await noteList.expectNoteVisible("Restorable note");
+    await noteList.expectNoteVisible(note.title);
   });
 
   it("permanently deletes a note from trash", async () => {
     // Permanent delete confirms via dialog (positive button = "yes").
     // Afterwards the note must be gone from trash AND not be back in
     // the notes list.
-    await createTrashedNote(
-      "Doomed note",
-      "This note will be deleted forever."
-    );
+    const note = fixtures.trash.doomed;
+    await createTrashedNote(note.title, note.body);
     await trash.open();
-    await trash.expectItemVisible("Doomed note");
+    await trash.expectItemVisible(note.title);
 
     await trash.permanentlyDeleteFirstItem();
-    await trash.expectItemNotVisible("Doomed note");
+    await trash.expectItemNotVisible(note.title);
 
     await noteList.open();
-    await noteList.expectNoteNotVisible("Doomed note");
+    await noteList.expectNoteNotVisible(note.title);
   });
 
   it("clears all trash", async () => {
     // "Clear trash" wipes every trashed item after the same confirm
     // dialog. Both the title and the body preview must be gone.
-    await createTrashedNote(
-      "Clearable note",
-      "This note will be cleared with the trash."
-    );
+    const note = fixtures.trash.clearable;
+    await createTrashedNote(note.title, note.body);
     await trash.open();
-    await trash.expectItemVisible("Clearable note");
+    await trash.expectItemVisible(note.title);
 
     await trash.clearAll();
-    await trash.expectItemNotVisible("Clearable note");
-    await trash.expectItemNotVisible("This note will be cleared with the trash.");
+    await trash.expectItemNotVisible(note.title);
+    await trash.expectItemNotVisible(note.body);
   });
 });
