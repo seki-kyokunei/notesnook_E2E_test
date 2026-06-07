@@ -18,108 +18,88 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expect as jestExpect } from "@jest/globals";
-import { by, web } from "detox";
-import { notesnook } from "../test.ids";
-import { TestBuilder } from "./utils";
+import { EditorPage } from "../page-objects/editor.page";
+import { NoteListPage } from "../page-objects/note-list.page";
+import { Tests } from "./utils";
 
 /**
  * Full local note CRUD lifecycle — create, read (persistence), update,
  * delete, and the empty-title edge case. Everything runs offline against
  * the local database; no account or backend is involved.
  *
- * The editor is a WebView (packages/editor-mobile), so editor content is
- * read through Detox's web API: the title is a <textarea id="editor-title">
- * and the body is a ProseMirror contenteditable.
+ * Screen interactions live in page objects: NoteListPage drives the notes
+ * list, EditorPage wraps the editor WebView (see page-objects/editor.page.ts
+ * for the WebView structure and the react-freeze tab model).
  */
 
-/** Read the current title from the editor WebView. */
-function readEditorTitle(): Promise<string> {
-  return web()
-    .element(by.web.id("editor-title"))
-    .runScript("(el) => el.value");
-}
-
-/** Read the current body text from the editor WebView. */
-function readEditorBody(): Promise<string> {
-  return web()
-    .element(by.web.className("ProseMirror"))
-    .runScript("(el) => el.textContent");
-}
-
-/** Append text to the note body inside the editor WebView. */
-async function typeIntoEditorBody(text: string) {
-  await web().element(by.web.className("ProseMirror")).focus();
-  await web().element(by.web.className("ProseMirror")).typeText(text, true);
-}
+const noteList = new NoteListPage();
+const editor = new EditorPage();
 
 describe("NOTE LIFECYCLE", () => {
+  // Fresh app install + launch before every test.
+  beforeEach(async () => {
+    await Tests.prepare();
+  });
+
   it("creates a note and shows it in the list", async () => {
     // Create: add button -> type title + body in the editor -> exit.
-    // createNote() already asserts the body preview is visible in the list;
-    // additionally assert the title is shown.
-    await TestBuilder.create()
-      .prepare()
-      .createNote("Lifecycle note", "The body of the lifecycle note.")
-      .isVisibleByText("Lifecycle note")
-      .run();
+    // createNote() already asserts the body preview is visible in the
+    // list; additionally assert the title is shown.
+    await editor.createNote(
+      "Lifecycle note",
+      "The body of the lifecycle note."
+    );
+    await noteList.expectNoteVisible("Lifecycle note");
   });
 
   it("persists note content when reopened", async () => {
     // Read-after-write: reopen the note from the list and verify the
     // editor restores exactly what was entered (local DB persistence).
-    await TestBuilder.create()
-      .prepare()
-      .createNote("Persisted note", "This body must survive a reopen.")
-      .waitAndTapById(notesnook.ids.note.get(0))
-      .wait(1000) // let the editor WebView load the note
-      .addStep(async () => {
-        jestExpect(await readEditorTitle()).toBe("Persisted note");
-        jestExpect(await readEditorBody()).toContain(
-          "This body must survive a reopen."
-        );
-      })
-      .exitEditor()
-      .run();
+    await editor.createNote(
+      "Persisted note",
+      "This body must survive a reopen."
+    );
+    await noteList.openNoteAt(0);
+    await editor.waitForLoad();
+
+    jestExpect(await editor.readTitle()).toBe("Persisted note");
+    jestExpect(await editor.readBody()).toContain(
+      "This body must survive a reopen."
+    );
+
+    await editor.exit();
   });
 
   it("edits a note and reflects the update", async () => {
     // Update: reopen the note, append text, exit, reopen again and verify
     // both the original and the appended content were saved.
-    await TestBuilder.create()
-      .prepare()
-      .createNote("Editable note", "Original content.")
-      .waitAndTapById(notesnook.ids.note.get(0))
-      .wait(1000) // let the editor WebView load the note
-      .addStep(async () => {
-        await typeIntoEditorBody(" Edited content.");
-      })
-      .wait(500) // give the editor time to autosave
-      .exitEditor()
-      .waitAndTapById(notesnook.ids.note.get(0))
-      .wait(1000)
-      .addStep(async () => {
-        const body = await readEditorBody();
-        jestExpect(body).toContain("Original content.");
-        jestExpect(body).toContain("Edited content.");
-      })
-      .exitEditor()
-      .run();
+    await editor.createNote("Editable note", "Original content.");
+
+    await noteList.openNoteAt(0);
+    await editor.waitForLoad();
+    await editor.appendToBody(" Edited content.");
+    await editor.waitForAutosave();
+    await editor.exit();
+
+    await noteList.openNoteAt(0);
+    await editor.waitForLoad();
+    const body = await editor.readBody();
+    jestExpect(body).toContain("Original content.");
+    jestExpect(body).toContain("Edited content.");
+    await editor.exit();
   });
 
   it("deletes a note and removes it from the list", async () => {
     // Delete: list item menu -> "Move to trash". The app moves the note to
     // trash immediately (no confirmation dialog) and the properties sheet
     // closes itself, so the only post-condition is the note leaving the list.
-    await TestBuilder.create()
-      .prepare()
-      .createNote("Disposable note", "This note is about to be deleted.")
-      .waitAndTapById(notesnook.listitem.menu)
-      .wait(500) // sheet open animation
-      .waitAndTapById("icon-trash")
-      .wait(500) // sheet close animation
-      .isNotVisibleByText("Disposable note")
-      .isNotVisibleByText("This note is about to be deleted.")
-      .run();
+    await editor.createNote(
+      "Disposable note",
+      "This note is about to be deleted."
+    );
+    await noteList.moveFirstNoteToTrash();
+    await noteList.expectNoteNotVisible("Disposable note");
+    await noteList.expectNoteNotVisible("This note is about to be deleted.");
   });
 
   it("handles a note with an empty title", async () => {
@@ -127,11 +107,8 @@ describe("NOTE LIFECYCLE", () => {
     // auto-generates a title of the form "Note DD-MM-YYYY HH:MM" (verified
     // behavior), so the note must still appear in the list as item 0 with
     // its body as the preview text.
-    await TestBuilder.create()
-      .prepare()
-      .createNote(undefined, "Body only, no title was entered.")
-      .isVisibleById(notesnook.ids.note.get(0))
-      .isVisibleByText("Body only, no title was entered.")
-      .run();
+    await editor.createNote(undefined, "Body only, no title was entered.");
+    await noteList.expectNoteItemVisible(0);
+    await noteList.expectNoteVisible("Body only, no title was entered.");
   });
 });
