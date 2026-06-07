@@ -1,3 +1,13 @@
+> ## 📋 Detox E2E Take-Home Assignment
+>
+> This repository is a fork of [Notesnook](https://github.com/streetwriters/notesnook) used for a **Detox E2E testing take-home assignment**. The application is Notesnook's work; the E2E test suite is mine.
+>
+> **→ The tests, the three-layer architecture (fixtures / page-objects / tests), and the full write-up live in [`apps/mobile/e2e/`](apps/mobile/e2e/README.md).**
+>
+> Branch: [`e2e-pom-refactor`](../../tree/e2e-pom-refactor) is the full submission (16 tests, Page Object Model).
+
+---
+
 <p align="center">
 <img style="align:center;" src="./resources/icon.png" alt="Notesnook Logo" width="100" />
 </p>
