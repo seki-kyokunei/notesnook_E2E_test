@@ -1,0 +1,106 @@
+# =============================================================================
+# ILLUSTRATIVE EXAMPLE — iOS Detox E2E workflow
+#
+# This workflow demonstrates how the mobile e2e suite (apps/mobile/e2e)
+# would run in CI. It mirrors the exact command sequence used and verified
+# locally (macOS 26 / Xcode 26.5 / Node 26 / iPhone 17 simulators), but it
+# has NOT been validated on GitHub-hosted runners: hosted macOS images
+# differ in Xcode/simulator versions, and mobile E2E in CI typically needs
+# runner-specific tuning (timeouts, simulator selection, caching) before
+# it is reliable.
+# =============================================================================
+
+name: iOS E2E (Detox) — example
+
+on:
+  pull_request:
+  # Manual trigger so the (long, expensive) job is never forced on every push.
+  workflow_dispatch:
+
+jobs:
+  e2e-ios:
+    # iOS Detox requires a macOS runner: xcodebuild and the iOS Simulator
+    # only exist on macOS. These runners are slower and billed at a higher
+    # multiplier than Linux — another reason this job is PR/manual only.
+    runs-on: macos-latest
+
+    # First-ever build of this app took ~30-40 min locally; CI without a
+    # warm derived-data cache will be in that range too.
+    timeout-minutes: 90
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      # Root install + mobile-scoped bootstrap. Note: apps/mobile's
+      # postinstall chain (patch-package -> font optimization -> the
+      # vendored arm64-simulator libsodium swap) must complete — the
+      # libsodium step is what makes the simulator build linkable on
+      # arm64-only iOS 26 simulators.
+      - name: Install dependencies
+        working-directory: .
+        run: |
+          npm install
+          npm run bootstrap -- --scope=mobile
+
+      # The monorepo packages (@notesnook/core, theme, editor-mobile, ...)
+      # must be BUILT before the Xcode build: the "Bundle React Native code
+      # and images" phase runs Metro, which resolves these packages to their
+      # dist/ output. bootstrap only links them — skipping this step fails
+      # the build late (30+ min in) with MODULE_NOT_FOUND, an expensive
+      # mistake discovered in local bring-up.
+      - name: Build workspace packages
+        working-directory: .
+        run: |
+          for pkg in logger intl crypto theme core common editor editor-mobile themes; do
+            node scripts/execute.mjs "$pkg:build"
+          done
+
+      # Detox's simulator control utility (boot, install, launch). Not part
+      # of the repo's own dependencies — must be provisioned on the runner.
+      - name: Install applesimutils
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+
+      - name: Install CocoaPods dependencies
+        working-directory: apps/mobile/ios
+        run: pod install
+
+      # Pre-builds Detox.framework + the XCUITest runner for the local
+      # Xcode version. If this cache is stale/missing for the runner's
+      # Xcode, tests fail at session start with cryptic "failed to connect
+      # to the app" errors — a classic mobile-CI flake source after Xcode
+      # image updates.
+      - name: Build Detox framework cache
+        run: npx detox build-framework-cache
+
+      # The #1 failure point in mobile CI: a full xcodebuild of the app +
+      # all pods. Sensitive to Xcode/Clang version drift (e.g. the fmt
+      # consteval breakage fixed in the Podfile for Xcode 26.5) and easily
+      # the longest step. ios.sim.release is used so tests run standalone,
+      # with no Metro dev server to babysit in CI.
+      - name: Build app for testing (detox build)
+        run: npx detox build -c ios.sim.release
+
+      # The #2 flake source: simulator boot + per-test app reinstall. The
+      # device type in .detoxrc.js (iPhone 17 Pro Max) must exist in the
+      # runner image's simulator runtime list — hosted images ship different
+      # device sets per Xcode version. Only the four suites validated
+      # locally are run; the repo's other legacy suites are not part of
+      # this verified set.
+      - name: Run Detox e2e tests
+        run: >
+          npx detox test -c ios.sim.release
+          e2e/tests/note-lifecycle.e2e.ts
+          e2e/tests/search-lifecycle.e2e.ts
+          e2e/tests/trash-lifecycle.e2e.ts
+          e2e/tests/notebook-lifecycle.e2e.ts
