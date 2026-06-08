@@ -130,19 +130,20 @@ done
 cd apps/mobile/ios && pod install && cd ..
 npx detox build-framework-cache
 
-# build the app, then run everything
-npx detox build -c ios.sim.release
-npx detox test -c ios.sim.release \
-  e2e/assignment/tests/note-lifecycle.e2e.ts \
-  e2e/assignment/tests/search-lifecycle.e2e.ts \
-  e2e/assignment/tests/trash-lifecycle.e2e.ts \
-  e2e/assignment/tests/notebook-lifecycle.e2e.ts
+# build the app  (npm run build-ios  ==  npx detox build -c ios.sim.release)
+npm run build-ios
+
+# run all of my suites  (npm run e2e-ios passes --detectOpenHandles; the path arg
+# scopes the run to my suites  ==  npx detox test -c ios.sim.release assignment/tests/)
+npm run e2e-ios -- assignment/tests/
 ```
 
 Run a single suite:
 
 ```bash
-npx detox test -c ios.sim.release e2e/assignment/tests/note-lifecycle.e2e.ts
+npm run e2e-ios -- assignment/tests/note-lifecycle.e2e.ts
+# or the direct equivalent:
+npx detox test -c ios.sim.release assignment/tests/note-lifecycle.e2e.ts
 ```
 
 ## 9. What's mine vs upstream

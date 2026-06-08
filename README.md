@@ -13,6 +13,21 @@ This repository is a fork of [Notesnook](https://github.com/streetwriters/notesn
 
 **→ [`apps/mobile/e2e/README.md`](apps/mobile/e2e/README.md)** — architecture, test strategy, per-suite coverage, the real flakiness problems hit during development (root cause → fix), CI notes, and how to run.
 
+## How to run
+
+From `apps/mobile/`, after install and one-time native setup (see the [full write-up](apps/mobile/e2e/README.md#8-how-to-run) for prerequisites and the bootstrap steps):
+
+```bash
+# build the iOS release app for the simulator
+npm run build-ios                       # == npx detox build -c ios.sim.release
+
+# run all of my E2E suites
+npm run e2e-ios -- assignment/tests/    # == npx detox test -c ios.sim.release assignment/tests/
+
+# run a single suite
+npm run e2e-ios -- assignment/tests/note-lifecycle.e2e.ts
+```
+
 ## Branches
 
 | Branch | Contents |
