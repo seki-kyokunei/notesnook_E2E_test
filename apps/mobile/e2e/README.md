@@ -91,15 +91,20 @@ Selection was driven by **business value × stability**:
 
 ## 6. Challenges & flakiness
 
-Real problems hit during development, as **problem → root cause → fix**:
+Real problems hit during development. I distinguish two kinds: deterministic
+issues that failed every time until fixed, and true flakiness that was
+non-deterministic.
 
-| Problem | Root cause | Fix |
-|---|---|---|
-| Back-to-back note creation cross-contaminated content between notes | The editor WebView keeps previously opened notes mounted as **frozen tabs (react-freeze)** — the DOM holds several `#editor-title`/`.ProseMirror` nodes, and first-DOM-match selectors can write into a *previous* note's frozen tab | The active tab's root carries an `.active` class (`editor.tsx`); all editor writes during creation are scoped with `.active …` CSS selectors (`EditorPage.createNoteInActiveTab`) |
-| Notebook items unreachable by the registry's testID | `test.ids.js` records `notebook-item-N`, but the component actually renders `notebook-item-{depth}-{index}` (`side-menu/notebook-item.tsx`) — the registry is **stale** | Verified against source; page object uses the real format and documents the discrepancy |
-| Empty-title test would flake on title assertions | Notesnook auto-generates `Note DD-MM-YYYY HH:MM` — a **time-dependent string** | Assert on the stable list-item testID and body preview instead of the generated title |
-| Wrong assumptions about confirm dialogs | Delete-to-trash and restore-from-trash have **no** confirm dialog; permanent-delete and clear-trash **do** (and the app sleeps 300ms before presenting it) | Verified each flow in `use-actions.tsx` before writing assertions; the delete flow waits out the app-side delay before tapping the dialog's `yes` |
-| One flaky run of a passing test | The shared helper's **5s default `isVisible` timeout** is the suite's tightest tolerance — a slow first list render after reinstall can exceed it | Documented as the most likely flake source; making it configurable is listed under future work |
+**Deterministic issues (bugs / mismatches — failed every time until fixed):**
+
+- **Stale testID** — the registry (`test.ids.js`) declares `notebook-item-{index}`, but the source (`side-menu/notebook-item.tsx`) renders `notebook-item-{depth}-{index}` because notebooks can nest. Verified against source; the page object uses the real format.
+- **Confirm-dialog assumptions** — delete-to-trash and restore have **no** confirm dialog; permanent-delete and clear-trash **do** (with a ~300ms app-side delay before the dialog appears). Verified each flow before writing assertions.
+- **Editor WebView could target the wrong note** on back-to-back creation; scoped selectors to the active note's editor rather than the first match.
+
+**Flakiness (non-deterministic):**
+
+- **Time-dependent title** — an empty-title note auto-generates a timestamped title; asserting it would flake on the clock, so I assert the stable parts instead (a potential flake I prevented).
+- **Tight visibility timeout** — the 5s default `isVisible` timeout is the suite's tightest tolerance, and a slow first render after reinstall can occasionally exceed it. A genuine flaky run; documented, with making it configurable noted as future work.
 
 **Why mobile E2E is flaky in general** (and what this suite does about it): animation races (explicit settle waits), WebView state lagging native navigation (load waits + active-tab scoping), simulator boot variance, per-test reinstall cost (accepted deliberately — determinism over speed), and external dependencies (eliminated by testing offline-only flows).
 
